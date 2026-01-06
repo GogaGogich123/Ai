@@ -1,6 +1,11 @@
 # 🎮 Minecraft AI Builder
 
-Generate professional-quality Minecraft builds of ANY SIZE using AI! Train neural networks to create unique structures with functional interiors using state-of-the-art diffusion models.
+Generate professional-quality Minecraft builds from **TEXT PROMPTS** or random generation! Train neural networks to create unique structures with functional interiors using state-of-the-art diffusion models.
+
+**✨ NEW: Text-to-Build Generation!** Describe what you want and let AI build it:
+```bash
+python generate_from_text.py --prompt "medieval castle with stone towers" --output castle.litematic
+```
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/GogaGogich123/Ai/blob/capy/cap-1-98fb5d97/colab_train.ipynb)
 
@@ -23,16 +28,44 @@ pip install -r requirements.txt
 
 ## ✨ Features
 
+- ✨ **Text-to-Build Generation** - Describe builds in natural language! 🆕
 - 🏰 **High-Quality Generation** - Professional builder-level results (0.85+ score)
 - 🔧 **Multi-Scale Chunked Generation** - Build MASSIVE structures of any size
 - 🎨 **Hierarchical Generation** - Progressive refinement from coarse to fine
 - 🤖 **Latent Diffusion** - SOTA architecture for 3D generation
 - 🔍 **Smart Validation** - Physics & interior quality checks
 - 🛠️ **Auto-Fix** - Removes floating blocks automatically
-- 📝 **AI Dataset Descriptions** - Auto-generate descriptions for BuildPaste dataset ⭐ NEW!
+- 📝 **AI Dataset Descriptions** - Auto-generate descriptions for BuildPaste dataset
 - 📦 **Litematica Export** - Ready for Minecraft import
 
 ## 🌟 What's New
+
+### ✨ Text-to-Build Generation 🆕
+
+Generate Minecraft builds from text descriptions!
+
+```bash
+# Train text-conditioned model (Stage 3)
+python mcbuilder/train_text_to_build.py \
+    --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
+    --text_encoder_type clip \
+    --epochs 100
+
+# Generate from prompt
+python generate_from_text.py \
+    --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
+    --text_to_build_checkpoint ./checkpoints_text_to_build/text_to_build_final.pt \
+    --prompt "cozy cottage with fireplace and wooden furniture" \
+    --output cottage.litematic
+```
+
+**Example prompts:**
+- "medieval stone castle with tall towers and fortified walls"
+- "modern house with glass windows and concrete structure"
+- "fantasy treehouse with wooden bridges and leaf decorations"
+- "japanese pagoda with traditional architecture and curved roofs"
+
+**See [TEXT_TO_BUILD.md](TEXT_TO_BUILD.md) for complete guide!**
 
 ### Multi-Scale Generation
 Generate builds of ANY size! The system automatically switches to chunked generation for large structures:
@@ -88,12 +121,23 @@ python mcbuilder/train_improved_vqvae.py \
 
 ## 🎯 Training Pipeline
 
-High-quality pipeline with diffusion (20-28 hours training):
+### Random Generation (20-28 hours training):
 
 ```
 BuildPaste Dataset → Improved VQ-VAE (128d, 1024 codebook)
                   → Latent Diffusion (UNet3D)
                   → Multi-Scale Chunked Generation
+                  → Quality Validation
+                  → Auto-Fix → Litematica
+```
+
+### Text-to-Build Generation (35-48 hours total):
+
+```
+BuildPaste Dataset → Improved VQ-VAE + AI Descriptions (Gemini)
+                  → Text-Conditioned Diffusion (UNet3D + Cross-Attention)
+                  → Text Encoder (CLIP or Transformer)
+                  → Prompt → Generation
                   → Quality Validation
                   → Auto-Fix → Litematica
 ```
@@ -185,9 +229,11 @@ python generate_hq.py \
 - **Training Scripts**
   - `train_improved_vqvae.py` - Train compression model with dataset descriptions
   - `train_diffusion.py` - Train diffusion model
+  - `train_text_to_build.py` - ✨ NEW! Train text-conditioned model
 
-- **Generation Script**
-  - `generate_hq.py` - High-quality generation with chunked support
+- **Generation Scripts**
+  - `generate_hq.py` - High-quality random generation with chunked support
+  - `generate_from_text.py` - ✨ NEW! Generate from text prompts
 
 ## 📦 Requirements
 
@@ -197,18 +243,27 @@ python generate_hq.py \
 
 ## 🎓 How It Works
 
-1. **VQ-VAE Stage**: Compress 3D voxel data (32³) into discrete latent codes (8³), generate AI descriptions for dataset
+### Random Generation:
+1. **VQ-VAE Stage**: Compress 3D voxel data (32³) into discrete latent codes (8³)
 2. **Diffusion Stage**: Learn to generate latent codes using UNet3D
 3. **Multi-Scale Stage**: For large builds, generate in overlapping chunks
 4. **Blending**: Smoothly blend chunks with weighted averaging
 5. **Validation**: Check physics, interiors, fix issues
 6. **Export**: Save as .litematic for Minecraft
 
+### Text-to-Build Generation:
+1. **VQ-VAE Stage**: Compress 3D voxels, generate AI descriptions via Gemini
+2. **Text Encoder**: Encode prompts into embeddings (CLIP or Transformer)
+3. **Text-Conditioned Diffusion**: UNet3D with cross-attention to text
+4. **Generation**: Input prompt → text embeddings → latent → blocks
+5. **Validation**: Check quality, fix issues
+6. **Export**: Save as .litematic
+
 ## 🚀 Training Steps
 
 See **[QUICKSTART.md](QUICKSTART.md)** for detailed training guide.
 
-**Quick commands:**
+**Random Generation Pipeline:**
 
 ```bash
 # Stage 1: Improved VQ-VAE (~8-12 hours)
@@ -222,7 +277,7 @@ python mcbuilder/train_diffusion.py \
     --checkpoint_dir ./checkpoints_diffusion \
     --epochs 100
 
-# Stage 3: Generate any size!
+# Generate any size!
 python generate_hq.py \
     --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
     --diffusion_checkpoint ./checkpoints_diffusion/diffusion_final.pt \
@@ -231,13 +286,40 @@ python generate_hq.py \
     --validate
 ```
 
+**Text-to-Build Pipeline:**
+
+```bash
+# Stage 1: VQ-VAE + AI Descriptions (~9-14 hours)
+python mcbuilder/train_improved_vqvae.py \
+    --checkpoint_dir ./checkpoints_improved \
+    --epochs 100 \
+    --generate_descriptions \
+    --gemini_api_key YOUR_KEY
+
+# Stage 2: Text-Conditioned Diffusion (~15-20 hours)
+python mcbuilder/train_text_to_build.py \
+    --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
+    --checkpoint_dir ./checkpoints_text_to_build \
+    --text_encoder_type clip \
+    --epochs 100
+
+# Generate from text!
+python generate_from_text.py \
+    --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
+    --text_to_build_checkpoint ./checkpoints_text_to_build/text_to_build_final.pt \
+    --prompt "medieval castle with towers" \
+    --validate
+```
+
 ## 🔮 Future Plans
 
 - [x] Multi-scale chunked generation for large builds
 - [x] AI-generated descriptions with Gemini
-- [ ] Text-to-build generation with CLIP encoder
+- [x] ✨ Text-to-build generation with CLIP encoder
+- [ ] Multi-scale text-to-build (unlimited prompt-based sizes)
+- [ ] Negative prompts ("castle without towers")
+- [ ] Style transfer (prompt + reference build)
 - [ ] In-game streaming integration (Forge mod)
-- [ ] Style transfer (one build → another style)
 - [ ] Reference image conditioning
 - [ ] Progressive "watching it build" animation
 
@@ -247,10 +329,11 @@ Uses BuildPaste API for training data (non-commercial educational use). Structur
 
 ## 📚 Documentation
 
+- **[TEXT_TO_BUILD.md](TEXT_TO_BUILD.md)** - ✨ Complete text-to-build guide (NEW!)
 - **[QUICKSTART.md](QUICKSTART.md)** - Quick reference guide for training and generation
 - **[HQ_PIPELINE.md](HQ_PIPELINE.md)** - Technical details of the high-quality pipeline
 - **[QUALITY_IMPROVEMENTS.md](QUALITY_IMPROVEMENTS.md)** - Architecture deep dive and improvements
-- **[DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)** - ⭐ Dataset AI description generation
+- **[DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)** - Dataset AI description generation
 - **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** - Gemini API integration guide
 - **[colab_train.ipynb](colab_train.ipynb)** - Interactive training notebook
 
@@ -269,4 +352,4 @@ Research/educational project. BuildPaste data used under non-commercial terms.
 
 **Built with AI for AI builders! 🤖🏰**
 
-*Now supporting unlimited build sizes and AI-generated descriptions!*
+*Now supporting text-to-build generation, unlimited sizes, and AI descriptions!* ✨
