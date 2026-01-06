@@ -120,14 +120,14 @@ class UNet3D(nn.Module):
         ch = model_channels
         ds = 1
         for level, mult in enumerate(channel_mult):
+            blocks = []
             for _ in range(num_res_blocks):
-                layers = [
-                    ResBlock3D(ch, model_channels * mult, time_emb_dim, dropout)
-                ]
+                blocks.append(ResBlock3D(ch, model_channels * mult, time_emb_dim, dropout))
                 ch = model_channels * mult
                 if ds in attention_resolutions:
-                    layers.append(AttentionBlock3D(ch, num_heads))
-                self.down_blocks.append(nn.ModuleList(layers))
+                    blocks.append(AttentionBlock3D(ch, num_heads))
+            
+            self.down_blocks.append(nn.ModuleList(blocks))
             
             if level != len(channel_mult) - 1:
                 self.down_samples.append(nn.Conv3d(ch, ch, 3, stride=2, padding=1))
@@ -145,19 +145,21 @@ class UNet3D(nn.Module):
         self.up_samples = nn.ModuleList([])
         
         for level, mult in reversed(list(enumerate(channel_mult))):
+            blocks = []
             for i in range(num_res_blocks + 1):
-                layers = [
+                blocks.append(
                     ResBlock3D(
                         ch + (model_channels * mult if i == 0 else 0),
                         model_channels * mult,
                         time_emb_dim,
                         dropout
                     )
-                ]
+                )
                 ch = model_channels * mult
                 if ds in attention_resolutions:
-                    layers.append(AttentionBlock3D(ch, num_heads))
-                self.up_blocks.append(nn.ModuleList(layers))
+                    blocks.append(AttentionBlock3D(ch, num_heads))
+            
+            self.up_blocks.append(nn.ModuleList(blocks))
             
             if level != 0:
                 self.up_samples.append(nn.ConvTranspose3d(ch, ch, 4, stride=2, padding=1))
@@ -174,8 +176,8 @@ class UNet3D(nn.Module):
         h = self.input_conv(x)
         
         down_features = []
-        for blocks, downsample in zip(self.down_blocks, self.down_samples):
-            for block in blocks:
+        for level_blocks, downsample in zip(self.down_blocks, self.down_samples):
+            for block in level_blocks:
                 if isinstance(block, ResBlock3D):
                     h = block(h, time_emb)
                 else:
@@ -189,13 +191,13 @@ class UNet3D(nn.Module):
             else:
                 h = block(h)
         
-        for blocks, upsample in zip(self.up_blocks, self.up_samples):
+        for level_blocks, upsample in zip(self.up_blocks, self.up_samples):
             skip = down_features.pop()
             if h.shape != skip.shape:
                 h = F.interpolate(h, size=skip.shape[2:], mode='trilinear', align_corners=False)
             h = torch.cat([h, skip], dim=1)
             
-            for block in blocks:
+            for block in level_blocks:
                 if isinstance(block, ResBlock3D):
                     h = block(h, time_emb)
                 else:
