@@ -296,11 +296,85 @@ class LatentDiffusion3D(nn.Module):
         return self.unet(x, t)
 
     @torch.no_grad()
-    def sample(self, shape: Tuple[int, ...], device: torch.device) -> torch.Tensor:
-        x = torch.randn(shape, device=device)
+    def sample(
+        self, 
+        shape: Tuple[int, ...], 
+        device: torch.device, 
+        num_inference_steps: int = None,
+        init_latent: torch.Tensor = None
+    ) -> torch.Tensor:
+        if num_inference_steps is None:
+            num_inference_steps = self.timesteps
         
-        for i in reversed(range(self.timesteps)):
+        if init_latent is not None:
+            x = init_latent
+            start_step = self.timesteps - num_inference_steps
+        else:
+            x = torch.randn(shape, device=device)
+            start_step = 0
+        
+        step_size = max(1, self.timesteps // num_inference_steps)
+        
+        for i in reversed(range(start_step, self.timesteps, step_size)):
             t = torch.full((shape[0],), i, device=device, dtype=torch.long)
             x = self.p_sample(x, t)
+        
+        return x
+    
+    @torch.no_grad()
+    def sample_with_context(
+        self,
+        shape: Tuple[int, ...],
+        device: torch.device,
+        context: torch.Tensor,
+        num_inference_steps: int = None,
+        guidance_scale: float = 1.5
+    ) -> torch.Tensor:
+        if num_inference_steps is None:
+            num_inference_steps = self.timesteps
+        
+        x = torch.randn(shape, device=device)
+        
+        step_size = max(1, self.timesteps // num_inference_steps)
+        
+        for i in reversed(range(0, self.timesteps, step_size)):
+            t = torch.full((shape[0],), i, device=device, dtype=torch.long)
+            
+            pred_noise = self.unet(x, t)
+            
+            if context is not None and guidance_scale > 1.0:
+                context_channels = min(context.shape[1], x.shape[1])
+                context_resized = F.adaptive_avg_pool3d(
+                    context[:, :context_channels],
+                    output_size=x.shape[2:]
+                )
+                
+                x_with_context = x.clone()
+                x_with_context[:, :context_channels] += context_resized * 0.1
+                
+                pred_noise_context = self.unet(x_with_context, t)
+                
+                pred_noise = pred_noise + guidance_scale * (pred_noise_context - pred_noise)
+            
+            alpha = self.alphas[t]
+            alpha_cumprod = self.alphas_cumprod[t]
+            beta = self.betas[t]
+            
+            while len(alpha.shape) < len(x.shape):
+                alpha = alpha.unsqueeze(-1)
+                alpha_cumprod = alpha_cumprod.unsqueeze(-1)
+                beta = beta.unsqueeze(-1)
+            
+            pred_x0 = (x - torch.sqrt(1 - alpha_cumprod) * pred_noise) / torch.sqrt(alpha_cumprod)
+            pred_x0 = torch.clamp(pred_x0, -1, 1)
+            
+            mean = (x - beta * pred_noise / torch.sqrt(1 - alpha_cumprod)) / torch.sqrt(alpha)
+            
+            if t[0] > 0:
+                noise = torch.randn_like(x)
+                variance = beta
+                x = mean + torch.sqrt(variance) * noise
+            else:
+                x = mean
         
         return x

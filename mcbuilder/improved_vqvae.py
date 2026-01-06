@@ -3,7 +3,50 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple
 
-from .vqvae import VectorQuantizer, ResidualBlock3D
+class ResidualBlock3D(nn.Module):
+    def __init__(self, channels: int):
+        super().__init__()
+        self.conv1 = nn.Conv3d(channels, channels, kernel_size=3, padding=1)
+        self.norm1 = nn.GroupNorm(8, channels)
+        self.conv2 = nn.Conv3d(channels, channels, kernel_size=3, padding=1)
+        self.norm2 = nn.GroupNorm(8, channels)
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        residual = x
+        x = F.silu(self.norm1(self.conv1(x)))
+        x = self.norm2(self.conv2(x))
+        return F.silu(x + residual)
+
+class VectorQuantizer(nn.Module):
+    def __init__(self, num_embeddings: int, embedding_dim: int, commitment_cost: float = 0.25):
+        super().__init__()
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
+        self.commitment_cost = commitment_cost
+        
+        self.embedding = nn.Embedding(num_embeddings, embedding_dim)
+        self.embedding.weight.data.uniform_(-1.0 / num_embeddings, 1.0 / num_embeddings)
+    
+    def forward(self, z: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        z_flattened = z.reshape(-1, self.embedding_dim)
+        
+        distances = (
+            torch.sum(z_flattened ** 2, dim=1, keepdim=True)
+            + torch.sum(self.embedding.weight ** 2, dim=1)
+            - 2 * torch.matmul(z_flattened, self.embedding.weight.t())
+        )
+        
+        encoding_indices = torch.argmin(distances, dim=1)
+        
+        quantized = self.embedding(encoding_indices).view(z.shape)
+        
+        e_latent_loss = F.mse_loss(quantized.detach(), z)
+        q_latent_loss = F.mse_loss(quantized, z.detach())
+        vq_loss = q_latent_loss + self.commitment_cost * e_latent_loss
+        
+        quantized = z + (quantized - z).detach()
+        
+        return quantized, vq_loss, encoding_indices
 
 class ImprovedEncoder3D(nn.Module):
     def __init__(self, in_channels: int, hidden_dims: list, latent_dim: int, num_res_blocks: int = 3):

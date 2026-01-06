@@ -8,6 +8,7 @@ from mcbuilder.diffusion import LatentDiffusion3D
 from mcbuilder.validators import BuildQualityValidator, fix_floating_blocks
 from mcbuilder.blocks import BLOCKS_ARRAY
 from mcbuilder.litematic_export import export_to_litematic
+from mcbuilder.chunked_generation import MultiScaleChunkedGenerator, ChunkConfig
 
 def load_models(vqvae_path: str, diffusion_path: str, device):
     print("Loading Improved VQ-VAE...")
@@ -29,13 +30,14 @@ def load_models(vqvae_path: str, diffusion_path: str, device):
     
     return vqvae, diffusion
 
-def generate_high_quality(
+def generate_single_chunk(
     vqvae,
     diffusion,
     device,
     size: tuple = (32, 32, 32),
     num_samples: int = 3,
-    validate: bool = True
+    validate: bool = True,
+    num_inference_steps: int = 50
 ):
     print(f"Generating {num_samples} candidates of size {size}...")
     
@@ -51,7 +53,7 @@ def generate_high_quality(
         print(f"\nGenerating candidate {i+1}/{num_samples}...")
         
         with torch.no_grad():
-            latent = diffusion.sample(latent_shape, device)
+            latent = diffusion.sample(latent_shape, device, num_inference_steps=num_inference_steps)
             
             blocks_logits = vqvae.decode_latent(latent)
             blocks = blocks_logits.argmax(dim=1).squeeze(0)
@@ -92,9 +94,67 @@ def generate_high_quality(
     else:
         return candidates[0]
 
+def generate_high_quality(
+    vqvae,
+    diffusion,
+    device,
+    size: tuple = (32, 32, 32),
+    num_samples: int = 3,
+    validate: bool = True,
+    use_chunked: bool = False,
+    use_hierarchical: bool = False,
+    chunk_size: int = 32,
+    overlap: int = 8,
+    num_inference_steps: int = 50
+):
+    if use_chunked or any(s > chunk_size for s in size):
+        print(f"\n🔷 Using multi-scale chunked generation for large build {size}")
+        
+        chunk_config = ChunkConfig(
+            chunk_size=chunk_size,
+            overlap=overlap,
+            blend_width=4
+        )
+        
+        generator = MultiScaleChunkedGenerator(
+            vqvae, diffusion, device, chunk_config
+        )
+        
+        if use_hierarchical:
+            blocks = generator.generate_hierarchical(
+                size,
+                num_inference_steps=num_inference_steps
+            )
+        else:
+            blocks = generator.generate_large_build(
+                size,
+                num_inference_steps=num_inference_steps
+            )
+        
+        if validate:
+            print("\nValidating large build quality...")
+            validator = BuildQualityValidator()
+            block_names = ["minecraft:" + block for block in BLOCKS_ARRAY]
+            results = validator.validate(blocks, block_names)
+            
+            print(f"Physics score: {results['physics'].score:.2f}")
+            print(f"Interior score: {results['interior'].score:.2f}")
+            
+            if results['physics'].score < 0.8:
+                print("Fixing floating blocks...")
+                blocks = fix_floating_blocks(blocks)
+        
+        return blocks.cpu().numpy() if isinstance(blocks, torch.Tensor) else blocks
+    else:
+        return generate_single_chunk(
+            vqvae, diffusion, device, size, num_samples, validate, num_inference_steps
+        )
+
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
+    
+    size = tuple(map(int, args.size.split(',')))
     
     vqvae, diffusion = load_models(
         args.vqvae_checkpoint,
@@ -102,15 +162,18 @@ def main(args):
         device
     )
     
-    size = tuple(map(int, args.size.split(',')))
-    
     blocks = generate_high_quality(
         vqvae,
         diffusion,
         device,
         size=size,
         num_samples=args.num_samples,
-        validate=args.validate
+        validate=args.validate,
+        use_chunked=args.chunked,
+        use_hierarchical=args.hierarchical,
+        chunk_size=args.chunk_size,
+        overlap=args.overlap,
+        num_inference_steps=args.num_inference_steps
     )
     
     block_names = ["minecraft:" + block for block in BLOCKS_ARRAY]
@@ -139,7 +202,11 @@ def main(args):
                 device,
                 size=size,
                 num_samples=1,
-                validate=False
+                validate=False,
+                use_chunked=args.chunked,
+                chunk_size=args.chunk_size,
+                overlap=args.overlap,
+                num_inference_steps=args.num_inference_steps
             )
             
             export_to_litematic(
@@ -163,6 +230,11 @@ if __name__ == "__main__":
     parser.add_argument('--num_samples', type=int, default=3, help='Number of candidates to generate (best will be selected)')
     parser.add_argument('--validate', action='store_true', help='Enable quality validation')
     parser.add_argument('--generate_multiple', type=int, default=0, help='Generate N additional unvalidated variants')
+    parser.add_argument('--chunked', action='store_true', help='Force chunked generation even for small builds')
+    parser.add_argument('--hierarchical', action='store_true', help='Use hierarchical multi-scale generation')
+    parser.add_argument('--chunk_size', type=int, default=32, help='Size of each chunk (default: 32)')
+    parser.add_argument('--overlap', type=int, default=8, help='Overlap between chunks (default: 8)')
+    parser.add_argument('--num_inference_steps', type=int, default=50, help='Number of diffusion steps (default: 50)')
     
     args = parser.parse_args()
     main(args)
