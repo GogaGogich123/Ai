@@ -7,10 +7,10 @@ import argparse
 from tqdm import tqdm
 import wandb
 
-from dataset import BuildPasteDataset
-from improved_vqvae import ImprovedVQVAE3D
-from diffusion import LatentDiffusion3D
-from blocks import BLOCKS_ARRAY
+from mcbuilder.dataset import BuildPasteDataset
+from mcbuilder.improved_vqvae import ImprovedVQVAE3D
+from mcbuilder.diffusion import LatentDiffusion3D
+from mcbuilder.blocks import BLOCKS_ARRAY
 
 class LatentDatasetForDiffusion(torch.utils.data.IterableDataset):
     def __init__(self, base_dataset, vqvae, device):

@@ -6,9 +6,9 @@ import argparse
 from tqdm import tqdm
 import wandb
 
-from dataset import BuildPasteDataset
-from improved_vqvae import ImprovedVQVAE3D
-from blocks import BLOCKS_ARRAY
+from mcbuilder.dataset import BuildPasteDataset
+from mcbuilder.improved_vqvae import ImprovedVQVAE3D
+from mcbuilder.blocks import BLOCKS_ARRAY
 
 def perceptual_loss(recon, target, model):
     recon_feat = model.encoder(recon)
