@@ -10,6 +10,8 @@ import random
 
 from .buildpaste_api import BuildPasteAPI, BuildData, BuildMetadata
 from .blocks import BLOCKS_ARRAY, is_blacklisted
+from .build_analyzer import BuildAnalyzer
+from .gemini_describer import GeminiDescriber
 
 class BuildPasteDataset(IterableDataset):
     def __init__(
@@ -21,7 +23,10 @@ class BuildPasteDataset(IterableDataset):
         max_blocks: Optional[int] = None,
         categories: Optional[List[str]] = None,
         transform=None,
-        download: bool = True
+        download: bool = True,
+        generate_descriptions: bool = False,
+        gemini_api_key: Optional[str] = None,
+        description_language: str = "en"
     ):
         super().__init__()
         self.cache_dir = Path(cache_dir)
@@ -35,57 +40,144 @@ class BuildPasteDataset(IterableDataset):
         self.transform = transform
         self.download = download
         
+        self.generate_descriptions = generate_descriptions
+        self.description_language = description_language
+        
         self.api = BuildPasteAPI()
+        
+        if generate_descriptions:
+            if not gemini_api_key:
+                raise ValueError("gemini_api_key required when generate_descriptions=True")
+            self.analyzer = BuildAnalyzer()
+            self.describer = GeminiDescriber(gemini_api_key)
+            print(f"✓ Gemini descriptions enabled (language: {description_language})")
+        else:
+            self.analyzer = None
+            self.describer = None
         
         self.metadata_cache = self.cache_dir / "metadata.json"
         self.builds_cache = self.cache_dir / "builds"
+        self.descriptions_cache = self.cache_dir / "descriptions"
         self.builds_cache.mkdir(exist_ok=True)
+        self.descriptions_cache.mkdir(exist_ok=True)
     
     def _get_build_cache_path(self, build_id: str) -> Path:
         return self.builds_cache / f"{build_id}.npz"
     
+    def _get_description_cache_path(self, build_id: str) -> Path:
+        return self.descriptions_cache / f"{build_id}.txt"
+    
     def _is_cached(self, build_id: str) -> bool:
         return self._get_build_cache_path(build_id).exists()
     
-    def _cache_build(self, build_data: BuildData):
+    def _is_description_cached(self, build_id: str) -> bool:
+        return self._get_description_cache_path(build_id).exists()
+    
+    def _cache_build(self, build_data: BuildData, description: Optional[str] = None):
         cache_path = self._get_build_cache_path(build_data.metadata.build_id)
         
         size = build_data.size
         blocks = np.array(build_data.blocks, dtype=np.int16).reshape(size)
+        
+        metadata_dict = {
+            'name': build_data.metadata.name,
+            'category': build_data.metadata.category,
+            'block_count': build_data.metadata.block_count
+        }
         
         np.savez_compressed(
             cache_path,
             blocks=blocks,
             size=size,
             direction=build_data.direction,
-            block_count=build_data.metadata.block_count
+            block_count=build_data.metadata.block_count,
+            metadata=json.dumps(metadata_dict)
         )
+        
+        if description:
+            desc_path = self._get_description_cache_path(build_data.metadata.build_id)
+            with open(desc_path, 'w', encoding='utf-8') as f:
+                f.write(description)
     
-    def _load_cached_build(self, build_id: str) -> Optional[np.ndarray]:
+    def _load_cached_build(self, build_id: str) -> Optional[Tuple[np.ndarray, Optional[str]]]:
         cache_path = self._get_build_cache_path(build_id)
         if not cache_path.exists():
             return None
         
         try:
-            data = np.load(cache_path)
-            return data['blocks']
+            data = np.load(cache_path, allow_pickle=True)
+            blocks = data['blocks']
+            
+            description = None
+            desc_path = self._get_description_cache_path(build_id)
+            if desc_path.exists():
+                with open(desc_path, 'r', encoding='utf-8') as f:
+                    description = f.read().strip()
+            
+            return blocks, description
         except Exception as e:
             print(f"Error loading cached build {build_id}: {e}")
             return None
     
-    def _download_and_cache_build(self, metadata: BuildMetadata) -> Optional[np.ndarray]:
+    def _generate_description_for_build(
+        self, 
+        blocks: np.ndarray, 
+        metadata: BuildMetadata
+    ) -> str:
+        try:
+            block_names = ["minecraft:" + block for block in BLOCKS_ARRAY]
+            
+            blocks_tensor = torch.from_numpy(blocks)
+            analysis = self.analyzer.analyze_build(blocks_tensor, block_names)
+            
+            analysis_prompt = self.analyzer.format_analysis_for_prompt(analysis)
+            
+            original_name = metadata.name if metadata.name else "Unknown Build"
+            original_category = metadata.category if metadata.category else "Unknown"
+            
+            enhanced_prompt = f"{analysis_prompt}\n\nOriginal name: {original_name}\nCategory: {original_category}\n"
+            
+            description = self.describer.generate_description(
+                analysis,
+                enhanced_prompt,
+                style="detailed",
+                language=self.description_language
+            )
+            
+            return description
+        
+        except Exception as e:
+            print(f"Warning: Failed to generate description: {e}")
+            return f"{metadata.name} - {metadata.category} build with {metadata.block_count} blocks"
+    
+    def _download_and_cache_build(self, metadata: BuildMetadata) -> Optional[Tuple[np.ndarray, Optional[str]]]:
         if self._is_cached(metadata.build_id):
             return self._load_cached_build(metadata.build_id)
         
         if not self.download:
             return None
         
+        print(f"Downloading build: {metadata.name} ({metadata.build_id})...")
         build_data = self.api.download_build(metadata.build_id)
         if build_data is None:
             return None
         
-        self._cache_build(build_data)
-        return self._load_cached_build(metadata.build_id)
+        size = build_data.size
+        blocks = np.array(build_data.blocks, dtype=np.int16).reshape(size)
+        
+        description = None
+        if self.generate_descriptions and not self._is_description_cached(metadata.build_id):
+            print(f"  Generating AI description...")
+            description = self._generate_description_for_build(blocks, metadata)
+            print(f"  ✓ Description: {description[:80]}...")
+        elif self._is_description_cached(metadata.build_id):
+            desc_path = self._get_description_cache_path(metadata.build_id)
+            with open(desc_path, 'r', encoding='utf-8') as f:
+                description = f.read().strip()
+        
+        self._cache_build(build_data, description)
+        
+        return blocks, description
     
     def _extract_chunks(self, blocks: np.ndarray) -> List[np.ndarray]:
         sx, sy, sz = blocks.shape
@@ -131,9 +223,11 @@ class BuildPasteDataset(IterableDataset):
                 if idx % worker_info.num_workers != worker_info.id:
                     continue
             
-            blocks = self._download_and_cache_build(metadata)
-            if blocks is None:
+            result = self._download_and_cache_build(metadata)
+            if result is None:
                 continue
+            
+            blocks, description = result
             
             chunks = self._extract_chunks(blocks)
             
@@ -146,7 +240,9 @@ class BuildPasteDataset(IterableDataset):
                 yield {
                     'blocks': chunk_tensor,
                     'build_id': metadata.build_id,
-                    'category': metadata.category
+                    'category': metadata.category,
+                    'description': description,
+                    'build_name': metadata.name
                 }
 
 class MaskedChunkDataset(IterableDataset):
@@ -177,5 +273,7 @@ class MaskedChunkDataset(IterableDataset):
                 'target': original,
                 'mask': mask,
                 'build_id': sample['build_id'],
-                'category': sample['category']
+                'category': sample['category'],
+                'description': sample.get('description'),
+                'build_name': sample.get('build_name')
             }

@@ -32,7 +32,9 @@ class LatentDatasetForDiffusion(torch.utils.data.IterableDataset):
                 yield {
                     'latent': latent.squeeze(0).cpu(),
                     'build_id': sample['build_id'],
-                    'category': sample['category']
+                    'category': sample['category'],
+                    'description': sample.get('description'),
+                    'build_name': sample.get('build_name')
                 }
 
 def train_epoch(model, dataloader, optimizer, device, epoch):
@@ -113,7 +115,10 @@ def main(args):
         min_blocks=args.min_blocks,
         max_blocks=args.max_blocks,
         categories=args.categories.split(',') if args.categories else None,
-        download=True
+        download=True,
+        generate_descriptions=args.generate_descriptions,
+        gemini_api_key=args.gemini_api_key if args.generate_descriptions else None,
+        description_language=args.description_language
     )
     
     latent_dataset = LatentDatasetForDiffusion(
@@ -214,6 +219,10 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--save_every', type=int, default=10)
+    
+    parser.add_argument('--generate_descriptions', action='store_true', help='Generate AI descriptions for dataset builds')
+    parser.add_argument('--gemini_api_key', type=str, default=None, help='Gemini API key for description generation')
+    parser.add_argument('--description_language', type=str, default='en', choices=['en', 'ru'], help='Language for descriptions')
     
     args = parser.parse_args()
     main(args)

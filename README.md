@@ -29,7 +29,7 @@ pip install -r requirements.txt
 - 🤖 **Latent Diffusion** - SOTA architecture for 3D generation
 - 🔍 **Smart Validation** - Physics & interior quality checks
 - 🛠️ **Auto-Fix** - Removes floating blocks automatically
-- 📝 **AI Descriptions** - Automatic build descriptions with Gemini API ⭐ NEW!
+- 📝 **AI Dataset Descriptions** - Auto-generate descriptions for BuildPaste dataset ⭐ NEW!
 - 📦 **Litematica Export** - Ready for Minecraft import
 
 ## 🌟 What's New
@@ -43,13 +43,16 @@ Generate builds of ANY size! The system automatically switches to chunked genera
 - **Seamless blending**: No visible seams between chunks
 - **Context-aware**: Each chunk considers neighboring chunks
 
-### AI-Generated Descriptions with Gemini ⭐ NEW!
-Automatically generate professional descriptions for your builds:
+### AI-Generated Dataset Descriptions with Gemini ⭐ NEW!
+Automatically generate professional descriptions for BuildPaste dataset builds:
 
-- **Smart Analysis**: Analyzes structure, materials, rooms
-- **Multiple Styles**: Detailed, concise, or creative descriptions
+- **During Training**: Generate descriptions while downloading builds
+- **Batch Mode**: Generate descriptions for existing cached builds
+- **Smart Analysis**: Analyzes structure, materials, rooms, furniture
+- **Multiple Styles**: Detailed, concise, creative descriptions
 - **Multilingual**: English and Russian support
-- **See [GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md) for details**
+- **Text-to-Build Ready**: Creates dataset for future text-conditioned training
+- **See [DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md) for complete guide**
 
 ### Example: Generate a 64x64x64 Castle
 ```bash
@@ -68,6 +71,34 @@ python generate_hq.py \
     --hierarchical \
     --validate \
     --output massive_fortress.litematic
+```
+
+### Example: Training with Dataset Descriptions ⭐ NEW!
+```bash
+# Generate AI descriptions while training
+python mcbuilder/train_improved_vqvae.py \
+    --checkpoint_dir ./checkpoints_improved \
+    --epochs 100 \
+    --generate_descriptions \
+    --gemini_api_key YOUR_API_KEY \
+    --description_language ru
+```
+
+**Result**: Each downloaded BuildPaste build gets a professional AI-generated description saved to cache!
+
+### Example: Batch Generate Descriptions for Existing Dataset
+```bash
+# Generate descriptions for already cached builds
+python generate_dataset_descriptions.py \
+    --cache_dir ./data/cache \
+    --gemini_api_key YOUR_API_KEY \
+    --language en \
+    --style detailed
+
+# Preview generated descriptions
+python generate_dataset_descriptions.py \
+    --cache_dir ./data/cache \
+    --preview
 ```
 
 ## 🎯 Training Pipeline
@@ -252,7 +283,8 @@ Uses BuildPaste API for training data (non-commercial educational use). Structur
 - **[QUICKSTART.md](QUICKSTART.md)** - Quick reference guide for training and generation
 - **[HQ_PIPELINE.md](HQ_PIPELINE.md)** - Technical details of the high-quality pipeline
 - **[QUALITY_IMPROVEMENTS.md](QUALITY_IMPROVEMENTS.md)** - Architecture deep dive and improvements
-- **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** - ⭐ AI description generation guide
+- **[DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)** - ⭐ **Dataset description generation guide**
+- **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** - AI description for generated builds
 - **[colab_train.ipynb](colab_train.ipynb)** - Interactive training notebook
 
 ## ⚖️ License
