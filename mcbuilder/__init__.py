@@ -4,6 +4,9 @@ from .dataset import BuildPasteDataset, MaskedChunkDataset
 from .vqvae import VQVAE3D
 from .transformer import MaskedLatentModel
 from .litematic_export import export_to_litematic
+from .improved_vqvae import ImprovedVQVAE3D
+from .diffusion import LatentDiffusion3D
+from .validators import BuildQualityValidator, fix_floating_blocks
 
 __all__ = [
     'BLOCKS_ARRAY',
@@ -18,4 +21,8 @@ __all__ = [
     'VQVAE3D',
     'MaskedLatentModel',
     'export_to_litematic',
+    'ImprovedVQVAE3D',
+    'LatentDiffusion3D',
+    'BuildQualityValidator',
+    'fix_floating_blocks',
 ]
