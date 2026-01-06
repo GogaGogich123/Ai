@@ -18,6 +18,18 @@ python mcbuilder/train_vqvae.py \
 ```
 
 ### 3. Train Transformer (Stage 2)
+
+**Option A: Text-Conditioned (Recommended)**
+```bash
+python mcbuilder/train_text_conditioned.py \
+    --vqvae_checkpoint ./checkpoints/vqvae_final.pt \
+    --cache_dir ./data/cache \
+    --checkpoint_dir ./checkpoints_text \
+    --batch_size 8 \
+    --epochs 50
+```
+
+**Option B: Unconditional**
 ```bash
 python mcbuilder/train_transformer.py \
     --vqvae_checkpoint ./checkpoints/vqvae_final.pt \
@@ -28,14 +40,26 @@ python mcbuilder/train_transformer.py \
 ```
 
 ### 4. Generate Builds
+
+**From Text Prompt:**
+```bash
+python generate_text.py \
+    --vqvae_checkpoint ./checkpoints/vqvae_final.pt \
+    --transformer_checkpoint ./checkpoints_text/text_transformer_final.pt \
+    --prompt "a cozy medieval cottage" \
+    --size 32,32,32 \
+    --output my_build.litematic \
+    --temperature 1.0 \
+    --num_iterations 10
+```
+
+**Unconditional:**
 ```bash
 python generate.py \
     --vqvae_checkpoint ./checkpoints/vqvae_final.pt \
     --transformer_checkpoint ./checkpoints_transformer/transformer_final.pt \
     --size 32,32,32 \
-    --output my_build.litematic \
-    --temperature 1.0 \
-    --num_iterations 10
+    --output my_build.litematic
 ```
 
 ## Google Colab
