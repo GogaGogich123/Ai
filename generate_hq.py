@@ -10,8 +10,6 @@ from mcbuilder.validators import BuildQualityValidator, fix_floating_blocks
 from mcbuilder.blocks import BLOCKS_ARRAY
 from mcbuilder.litematic_export import export_to_litematic
 from mcbuilder.chunked_generation import MultiScaleChunkedGenerator, ChunkConfig
-from mcbuilder.build_analyzer import BuildAnalyzer
-from mcbuilder.gemini_describer import GeminiDescriber
 
 def load_models(vqvae_path: str, diffusion_path: str, device):
     print("Loading Improved VQ-VAE...")
@@ -181,39 +179,13 @@ def main(args):
     
     block_names = ["minecraft:" + block for block in BLOCKS_ARRAY]
     
-    description = f"High-quality diffusion model, validated={args.validate}"
-    
-    if args.gemini_api_key:
-        print("\n🤖 Generating AI description with Gemini...")
-        try:
-            analyzer = BuildAnalyzer()
-            analysis = analyzer.analyze_build(blocks, block_names)
-            
-            print(f"  Analysis: {analysis['total_blocks']:,} blocks, {analysis['estimated_rooms']} rooms")
-            print(f"  Primary material: {analysis['primary_material']}")
-            
-            analysis_prompt = analyzer.format_analysis_for_prompt(analysis)
-            
-            describer = GeminiDescriber(args.gemini_api_key)
-            description = describer.generate_description(
-                analysis, 
-                analysis_prompt,
-                style=args.description_style,
-                language=args.description_language
-            )
-            
-            print(f"\n📝 Generated description:\n{description}\n")
-        except Exception as e:
-            print(f"⚠️ Error generating AI description: {e}")
-            print("Using default description...")
-    
     export_to_litematic(
         blocks=blocks,
         block_names=block_names,
         output_path=args.output,
         name=args.name,
         author="MinecraftAI-HQ",
-        description=description
+        description=f"High-quality diffusion model, validated={args.validate}, size={size}"
     )
     
     print(f"\n✓ High-quality build generated: {args.output}")
@@ -238,31 +210,13 @@ def main(args):
                 num_inference_steps=args.num_inference_steps
             )
             
-            variant_description = f"Variant {i+1}"
-            
-            if args.gemini_api_key and args.describe_variants:
-                try:
-                    analyzer = BuildAnalyzer()
-                    analysis = analyzer.analyze_build(blocks, block_names)
-                    analysis_prompt = analyzer.format_analysis_for_prompt(analysis)
-                    
-                    describer = GeminiDescriber(args.gemini_api_key)
-                    variant_description = describer.generate_description(
-                        analysis, 
-                        analysis_prompt,
-                        style="concise",
-                        language=args.description_language
-                    )
-                except:
-                    pass
-            
             export_to_litematic(
                 blocks=blocks,
                 block_names=block_names,
                 output_path=str(variant_path),
                 name=f"{args.name} - Variant {i+1}",
                 author="MinecraftAI-HQ",
-                description=variant_description
+                description=f"Variant {i+1}"
             )
             
             print(f"✓ Generated variant {i+1}: {variant_path}")
@@ -282,11 +236,6 @@ if __name__ == "__main__":
     parser.add_argument('--chunk_size', type=int, default=32, help='Size of each chunk (default: 32)')
     parser.add_argument('--overlap', type=int, default=8, help='Overlap between chunks (default: 8)')
     parser.add_argument('--num_inference_steps', type=int, default=50, help='Number of diffusion steps (default: 50)')
-    
-    parser.add_argument('--gemini_api_key', type=str, default=None, help='Gemini API key for AI-generated descriptions')
-    parser.add_argument('--description_style', type=str, default='detailed', choices=['detailed', 'concise', 'creative'], help='Style of AI description')
-    parser.add_argument('--description_language', type=str, default='en', choices=['en', 'ru'], help='Language for AI description')
-    parser.add_argument('--describe_variants', action='store_true', help='Generate AI descriptions for variants too')
     
     args = parser.parse_args()
     main(args)

@@ -86,21 +86,6 @@ python mcbuilder/train_improved_vqvae.py \
 
 **Result**: Each downloaded BuildPaste build gets a professional AI-generated description saved to cache!
 
-### Example: Batch Generate Descriptions for Existing Dataset
-```bash
-# Generate descriptions for already cached builds
-python generate_dataset_descriptions.py \
-    --cache_dir ./data/cache \
-    --gemini_api_key YOUR_API_KEY \
-    --language en \
-    --style detailed
-
-# Preview generated descriptions
-python generate_dataset_descriptions.py \
-    --cache_dir ./data/cache \
-    --preview
-```
-
 ## 🎯 Training Pipeline
 
 High-quality pipeline with diffusion (20-28 hours training):
@@ -161,23 +146,6 @@ python generate_hq.py \
     --output megastructure.litematic
 ```
 
-### With AI Description (Gemini) ⭐ NEW!
-```bash
-python generate_hq.py \
-    --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
-    --diffusion_checkpoint ./checkpoints_diffusion/diffusion_final.pt \
-    --size 64,64,64 \
-    --validate \
-    --gemini_api_key YOUR_API_KEY \
-    --description_style detailed \
-    --description_language en \
-    --output castle_with_desc.litematic
-```
-
-**Result**: Build with professional AI-generated description analyzing structure, materials, and features!
-
-See **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** for complete guide.
-
 ## 🏗️ Architecture
 
 ### Improved VQ-VAE
@@ -215,12 +183,11 @@ See **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** for complete guide.
   - `litematic_export.py` - .litematic file exporter
 
 - **Training Scripts**
-  - `train_improved_vqvae.py` - Train compression model
+  - `train_improved_vqvae.py` - Train compression model with dataset descriptions
   - `train_diffusion.py` - Train diffusion model
 
-- **Generation Scripts**
+- **Generation Script**
   - `generate_hq.py` - High-quality generation with chunked support
-  - `generate_with_description.py` - **NEW!** Interactive generator with AI descriptions
 
 ## 📦 Requirements
 
@@ -230,7 +197,7 @@ See **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** for complete guide.
 
 ## 🎓 How It Works
 
-1. **VQ-VAE Stage**: Compress 3D voxel data (32³) into discrete latent codes (8³)
+1. **VQ-VAE Stage**: Compress 3D voxel data (32³) into discrete latent codes (8³), generate AI descriptions for dataset
 2. **Diffusion Stage**: Learn to generate latent codes using UNet3D
 3. **Multi-Scale Stage**: For large builds, generate in overlapping chunks
 4. **Blending**: Smoothly blend chunks with weighted averaging
@@ -283,8 +250,8 @@ Uses BuildPaste API for training data (non-commercial educational use). Structur
 - **[QUICKSTART.md](QUICKSTART.md)** - Quick reference guide for training and generation
 - **[HQ_PIPELINE.md](HQ_PIPELINE.md)** - Technical details of the high-quality pipeline
 - **[QUALITY_IMPROVEMENTS.md](QUALITY_IMPROVEMENTS.md)** - Architecture deep dive and improvements
-- **[DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)** - ⭐ **Dataset description generation guide**
-- **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** - AI description for generated builds
+- **[DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)** - ⭐ Dataset AI description generation
+- **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** - Gemini API integration guide
 - **[colab_train.ipynb](colab_train.ipynb)** - Interactive training notebook
 
 ## ⚖️ License

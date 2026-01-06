@@ -1,143 +1,154 @@
 # 🤖 AI-Generated Descriptions with Gemini
 
-Два варианта использования Gemini API для описаний:
+Автоматическая генерация AI-описаний для построек из датасета BuildPaste.
 
-## 🎯 Основной вариант: Описания для датасета BuildPaste
+## 🎯 Основное использование: Dataset Descriptions
 
-**Зачем:** Создать text-to-build датасет для обучения моделей генерации по описанию.
+**Генерация описаний для построек из BuildPaste во время обучения.**
 
-**См. полное руководство:** [DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)
+### Как включить:
 
-### Быстрый старт:
-
-**Способ 1: Во время обучения**
 ```bash
 python mcbuilder/train_improved_vqvae.py \
+    --cache_dir ./data/cache \
+    --checkpoint_dir ./checkpoints_improved \
     --epochs 100 \
     --generate_descriptions \
     --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
     --description_language ru
 ```
 
-**Способ 2: Batch генерация**
-```bash
-python generate_dataset_descriptions.py \
-    --cache_dir ./data/cache \
-    --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --language ru \
-    --style detailed
-```
+**Что происходит:**
+1. Скачивается постройка из BuildPaste
+2. Анализируется структура (блоки, материалы, комнаты)
+3. Gemini генерирует детальное описание
+4. Описание сохраняется в `./data/cache/descriptions/`
+5. Постройка используется для обучения
 
 **Результат:**
 ```
 ./data/cache/
   ├── builds/
-  │   ├── abc123.npz          ← постройка
-  │   └── def456.npz
+  │   └── abc123.npz          ← Постройка
   └── descriptions/
-      ├── abc123.txt          ← AI описание
-      └── def456.txt
+      └── abc123.txt          ← "Средневековый замок из камня..."
 ```
+
+### Полное руководство:
+
+**См. [DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)** для детальной документации.
 
 ---
 
-## 📦 Дополнительно: Описания для сгенерированных построек
+## 📊 Параметры
 
-Также можно генерировать описания для AI-построек (для sharing/export):
+### Training скрипты
 
 ```bash
-python generate_hq.py \
-    --size 32,32,32 \
-    --validate \
+--generate_descriptions          # Включить генерацию описаний
+--gemini_api_key KEY             # API ключ Gemini (обязательно)
+--description_language LANG      # en или ru (default: en)
+```
+
+### Пример:
+
+```bash
+# Русские описания
+python mcbuilder/train_improved_vqvae.py \
+    --epochs 100 \
+    --generate_descriptions \
     --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --description_style detailed \
-    --description_language en \
-    --output castle.litematic
-```
+    --description_language ru
 
-**Результат:** .litematic файл с профессиональным AI-описанием внутри.
-
----
-
-## 📊 Сравнение вариантов
-
-| | Описания датасета | Описания генерации |
-|---|---|---|
-| **Цель** | Text-to-build обучение | Export/sharing |
-| **Когда** | При обучении / batch | При генерации |
-| **Файл** | `.txt` в кэше | Внутри `.litematic` |
-| **Важность** | ⭐⭐⭐ Основное | ⭐ Опционально |
-| **Руководство** | [DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md) | Ниже |
-
----
-
-## 🎨 Описания для сгенерированных построек
-
-### Параметры
-
-```bash
---gemini_api_key KEY             # Gemini API ключ
---description_style STYLE        # detailed/concise/creative
---description_language LANG      # en/ru
---describe_variants              # Описать и варианты тоже
-```
-
-### Примеры
-
-**Detailed (English):**
-```bash
-python generate_hq.py \
-    --size 32,32,32 \
-    --validate \
+# Английские описания
+python mcbuilder/train_improved_vqvae.py \
+    --epochs 100 \
+    --generate_descriptions \
     --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --description_style detailed \
-    --description_language en \
-    --output house.litematic
-```
-
-**Concise (Russian):**
-```bash
-python generate_hq.py \
-    --size 64,64,64 \
-    --validate \
-    --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --description_style concise \
-    --description_language ru \
-    --output замок.litematic
-```
-
-**With Variants:**
-```bash
-python generate_hq.py \
-    --size 32,32,32 \
-    --validate \
-    --generate_multiple 3 \
-    --describe_variants \
-    --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --output builds.litematic
-```
-
-**Interactive:**
-```bash
-python generate_with_description.py
+    --description_language en
 ```
 
 ---
 
-## 🎓 Рекомендации
+## 🎨 Стиль описаний
 
-### Для создания text-to-build датасета:
-✅ Используй описания датасета (DATASET_DESCRIPTIONS.md)  
-✅ Генерируй при обучении или batch режим  
-✅ Detailed style + English  
-✅ Сохраняй в кэш
+Используется **detailed** стиль (3-5 предложений):
 
-### Для sharing построек:
-✅ Описания для генерации (этот файл)  
-✅ Генерируй при создании .litematic  
-✅ Любой стиль на выбор  
-✅ Сохраняется внутри .litematic
+**Пример (English):**
+```
+A charming medieval cottage built primarily with oak planks and 
+cobblestone, spanning 32x28x32 blocks. The structure features 4 
+well-furnished rooms including a cozy living area with crafting 
+table and chests. Decorative glass windows and wooden doors create 
+a welcoming atmosphere, while torches provide warm interior lighting.
+```
+
+**Пример (Russian):**
+```
+Уютный средневековый домик из дубовых досок и булыжника размером 
+32x28x32 блока. Постройка включает 4 обустроенные комнаты с мебелью, 
+включая гостиную с верстаком и сундуками. Стеклянные окна и деревянные 
+двери создают уютную атмосферу, а факелы обеспечивают освещение.
+```
 
 ---
 
-**Основное использование:** [DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md) - создание text-to-build датасета! 🎯
+## ⚡ Производительность
+
+### Кэширование
+- Описания создаются **один раз**
+- Сохраняются в `.txt` файлах
+- При повторном запуске: **используются из кэша**
+- Никаких лишних API запросов
+
+### Влияние на время обучения
+- **Первый запуск:** +10-20% времени (генерация описаний)
+- **Повторные запуски:** 0% (описания из кэша)
+
+### Rate Limits
+- Gemini API: 60 запросов/минуту
+- Автоматический delay между запросами
+- Безопасно для непрерывного обучения
+
+---
+
+## 💡 Best Practices
+
+### Рекомендую:
+1. ✅ **Генерируй при первом обучении** - один раз и навсегда
+2. ✅ **Используй английский** - `--description_language en`
+3. ✅ **Сохраняй checkpoints часто** - `--save_every 5`
+4. ✅ **Backup кэша** - копируй `./data/cache/` периодически
+
+### Если обучение прервалось:
+- Описания сохранены в кэше
+- Просто продолжи обучение
+- Новые описания только для новых построек
+
+---
+
+## 🔮 Использование описаний
+
+После обучения датасет готов для text-to-build:
+
+```python
+from mcbuilder import BuildPasteDataset
+
+dataset = BuildPasteDataset(
+    cache_dir='./data/cache',
+    generate_descriptions=False  # описания уже есть!
+)
+
+for sample in dataset:
+    blocks = sample['blocks']         # Постройка [32,32,32]
+    description = sample['description']  # AI описание
+    build_name = sample['build_name']   # Имя постройки
+    
+    # Готово для text-to-build обучения
+```
+
+---
+
+**Полная документация:** [DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)
+
+**Автоматические AI-описания для датасета BuildPaste! 🤖📝**

@@ -1,10 +1,10 @@
 # 📝 Dataset Description Generation
 
-Автоматическая генерация AI-описаний для построек из датасета BuildPaste. Это создаёт **text-to-build датасет** для будущего обучения моделей генерации по текстовым промптам.
+Автоматическая генерация AI-описаний для построек из датасета BuildPaste **во время обучения**.
 
 ## 🎯 Зачем это нужно?
 
-При обучении модели скачиваются постройки из BuildPaste API. Теперь для каждой постройки можно автоматически сгенерировать детальное описание через Gemini API.
+При обучении модели скачиваются постройки из BuildPaste API. Для каждой постройки автоматически генерируется детальное описание через Gemini API и сохраняется в кэш.
 
 **Результат:** Датасет с парами (постройка, описание) готовый для text-to-build обучения!
 
@@ -20,15 +20,13 @@
       └── ...
 ```
 
-## 🚀 Два способа использования
+## 🚀 Использование
 
-### Способ 1: Во время обучения (Рекомендую)
-
-Генерировать описания автоматически при первой загрузке построек:
+### Stage 1: VQ-VAE с генерацией описаний
 
 ```bash
-# Stage 1: VQ-VAE с генерацией описаний
 python mcbuilder/train_improved_vqvae.py \
+    --cache_dir ./data/cache \
     --checkpoint_dir ./checkpoints_improved \
     --epochs 100 \
     --generate_descriptions \
@@ -37,85 +35,81 @@ python mcbuilder/train_improved_vqvae.py \
 ```
 
 **Что происходит:**
-1. Скачивается постройка из BuildPaste
-2. Анализируется структура (блоки, материалы, комнаты)
-3. Gemini генерирует описание
-4. Описание сохраняется в `./data/cache/descriptions/`
-5. Постройка используется для обучения
+1. ⬇️ Скачивается постройка из BuildPaste
+2. 📊 Анализируется структура (блоки, материалы, комнаты)
+3. 🤖 Gemini генерирует детальное описание
+4. 💾 Описание сохраняется в `./data/cache/descriptions/{build_id}.txt`
+5. ✅ Постройка используется для обучения VQ-VAE
 
-**Преимущества:**
-- Всё автоматически
-- Описания создаются один раз
-- Кэшируются навсегда
+**Важно:**
+- Описания генерируются **один раз** и кэшируются
+- При повторном запуске используются закэшированные описания
+- Обучение займёт дольше на ~10-20% из-за Gemini API запросов
 
-**Недостатки:**
-- Обучение идёт медленнее (Gemini API ~1 сек на запрос)
-- Нужен API ключ сразу
-
-### Способ 2: После обучения (Batch режим)
-
-Сначала обучаешь модель, потом генерируешь описания для уже скачанных построек:
+### Stage 2: Diffusion (описания уже в кэше)
 
 ```bash
-# 1. Обычное обучение (без описаний)
-python mcbuilder/train_improved_vqvae.py \
-    --checkpoint_dir ./checkpoints_improved \
-    --epochs 100
-
-# 2. Генерация описаний для всего кэша
-python generate_dataset_descriptions.py \
+python mcbuilder/train_diffusion.py \
+    --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
     --cache_dir ./data/cache \
-    --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --language ru \
-    --style detailed \
-    --delay 1.0
+    --checkpoint_dir ./checkpoints_diffusion \
+    --epochs 100
 ```
 
 **Что происходит:**
-1. Скрипт находит все .npz файлы в кэше
-2. Для каждого анализирует постройку
-3. Генерирует описание через Gemini
-4. Сохраняет в `./data/cache/descriptions/`
-
-**Преимущества:**
+- Использует тот же кэш построек
+- Описания уже сгенерированы на Stage 1
+- Никаких дополнительных Gemini запросов
 - Обучение идёт с нормальной скоростью
-- Можно контролировать процесс
-- Можно остановить и продолжить
 
-**Недостатки:**
-- Два шага вместо одного
+## 📊 Параметры
 
-## 📊 Параметры генерации
-
-### Training скрипты (train_improved_vqvae.py, train_diffusion.py)
+### Обязательные (для генерации описаний)
 
 ```bash
---generate_descriptions      # Включить генерацию описаний
---gemini_api_key KEY         # API ключ Gemini
---description_language LANG  # Язык: en или ru
+--generate_descriptions          # Включить генерацию
+--gemini_api_key YOUR_KEY        # API ключ Gemini
 ```
 
-### Batch генератор (generate_dataset_descriptions.py)
+### Опциональные
 
 ```bash
---cache_dir PATH            # Путь к кэшу (default: ./data/cache)
---gemini_api_key KEY        # API ключ Gemini (обязательно)
---language LANG             # en или ru (default: en)
---style STYLE               # detailed/concise/creative (default: detailed)
---limit N                   # Ограничить N построек (для тестирования)
---delay SECONDS             # Задержка между запросами (default: 1.0)
---preview                   # Просмотр существующих описаний
---num_preview N             # Сколько показать (default: 5)
+--description_language LANG      # en или ru (default: en)
 ```
 
-## 🎨 Стили описаний
+## 📖 Что анализируется
 
-### Detailed (Рекомендую для датасета)
-**Длина:** 3-5 предложений  
+BuildAnalyzer автоматически извлекает для каждой постройки:
+
+### Структурные метрики
+- **Размер:** H x W x D блоков
+- **Всего блоков:** количество использованных
+- **Плотность:** процент заполнения
+- **Высота:** реальная высота постройки
+- **Footprint:** размер основания
+
+### Материалы
+- **Топ-10 блоков** с процентами
+- **Основной материал** (самый используемый)
+- **Категории:**
+  - Структурные (stone, planks, bricks)
+  - Декоративные (glass, wool, flowers)
+  - Мебель (chest, bed, table)
+
+### Функциональность
+- **Количество комнат** (enclosed spaces)
+- **Наличие мебели**
+- **Оригинальное имя** из BuildPaste
+- **Категория** постройки
+
+## 🎨 Стиль описаний
+
+Используется **detailed** стиль (3-5 предложений):
+
 **Содержит:**
 - Тип постройки и архитектурный стиль
 - Основные материалы
-- Ключевые особенности
+- Ключевые особенности (размер, комнаты)
 - Функциональность
 
 **Пример (English):**
@@ -135,365 +129,155 @@ a welcoming atmosphere, while torches provide warm interior lighting.
 двери создают уютную атмосферу, а факелы обеспечивают освещение.
 ```
 
-### Concise (Быстрая генерация)
-**Длина:** 1-2 предложения  
-**Содержит:** Тип, материал, размер
+## ⚡ Производительность
 
-**Пример:**
-```
-Medieval stone castle 64x64x64 with 8 rooms and defensive towers.
-```
+### Скорость генерации
+- **~1 секунда** на описание (Gemini API)
+- **Rate limit:** 60 запросов/минуту
+- **Automatic delay** между запросами
 
-### Creative (Атмосферный)
-**Длина:** 3-4 предложения  
-**Стиль:** Storytelling, фэнтези
+### Влияние на обучение
+- **Без описаний:** ~8-12 часов (VQ-VAE)
+- **С описаниями:** ~9-14 часов (VQ-VAE)
+- **Разница:** +10-20% времени
 
-**Пример:**
-```
-Rising from the earth like a sentinel of ages past, this magnificent 
-fortress stands testament to architectural mastery. Within its weathered 
-stone walls, torch-lit chambers offer warm refuge, each room telling 
-stories of countless generations who sought shelter here.
-```
+### Кэширование
+- Описания сохраняются **навсегда**
+- При повторном запуске: **0 секунд** (используются из кэша)
+- Можно прервать и продолжить без потерь
 
-## 📖 Примеры использования
-
-### Пример 1: Генерация при первом обучении
+## 🎓 Workflow
 
 ```bash
-# Включи генерацию описаний при обучении VQ-VAE
+# 1. Первый запуск - с генерацией описаний
 python mcbuilder/train_improved_vqvae.py \
-    --cache_dir ./data/cache \
-    --checkpoint_dir ./checkpoints_improved \
     --epochs 100 \
     --generate_descriptions \
     --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
     --description_language ru
+# Время: ~9-14 часов (скачивание + описания + обучение)
 
-# Диффузия будет использовать тот же кэш (описания уже есть)
+# 2. Diffusion - описания уже есть
 python mcbuilder/train_diffusion.py \
     --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
-    --cache_dir ./data/cache \
-    --checkpoint_dir ./checkpoints_diffusion \
     --epochs 100
-```
+# Время: ~12-16 часов (только обучение)
 
-**Время:** Обучение займёт дольше на ~10-20% из-за Gemini API запросов
-
-### Пример 2: Batch генерация после обучения
-
-```bash
-# Сначала обычное обучение
+# 3. Повторное обучение - описания из кэша
 python mcbuilder/train_improved_vqvae.py \
-    --checkpoint_dir ./checkpoints_improved \
-    --epochs 100
-
-# Потом генерация описаний
-python generate_dataset_descriptions.py \
-    --cache_dir ./data/cache \
-    --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --language ru \
-    --style detailed \
-    --delay 1.0
+    --epochs 150 \
+    --generate_descriptions \
+    --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw
+# Время: ~8-12 часов (описания берутся из кэша, 0 новых запросов!)
 ```
 
-**Время:** Зависит от количества построек (~1 сек на постройку)
+## 💡 Рекомендации
 
-### Пример 3: Тестирование на малом датасете
+### Для максимальной эффективности:
+1. ✅ **Генерируй описания с первого раза** - при первом обучении
+2. ✅ **Используй английский** - `--description_language en`
+3. ✅ **Сохраняй checkpoints часто** - `--save_every 5`
+4. ✅ **Backup кэша** - периодически копируй `./data/cache/`
 
-```bash
-# Генерация для первых 10 построек
-python generate_dataset_descriptions.py \
-    --cache_dir ./data/cache \
-    --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --language en \
-    --style detailed \
-    --limit 10
-
-# Просмотр результатов
-python generate_dataset_descriptions.py \
-    --cache_dir ./data/cache \
-    --preview \
-    --num_preview 5
-```
-
-### Пример 4: Разные стили для разных целей
-
-```bash
-# Detailed для обучения
-python generate_dataset_descriptions.py \
-    --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
-    --style detailed \
-    --language en
-
-# Можно потом перегенерировать в другой стиль
-# (просто удали ./data/cache/descriptions/ и запусти снова)
-```
-
-## 📊 Что анализируется
-
-BuildAnalyzer автоматически извлекает:
-
-### Структурные метрики
-- **Размер:** H x W x D блоков
-- **Всего блоков:** количество использованных блоков
-- **Плотность:** процент заполнения пространства
-- **Высота:** реальная высота постройки
-- **Footprint:** размер основания
-
-### Материалы
-- **Топ-10 блоков** с процентами
-- **Основной материал** (самый используемый)
-- **Категории:**
-  - Структурные (stone, planks, bricks)
-  - Декоративные (glass, wool, flowers)
-  - Мебель (chest, bed, table)
-
-### Функциональность
-- **Количество комнат** (enclosed spaces)
-- **Наличие мебели**
-- **Метаданные** (имя, категория из BuildPaste)
-
-## 🔍 Просмотр описаний
-
-### Preview режим
-
-```bash
-python generate_dataset_descriptions.py \
-    --cache_dir ./data/cache \
-    --preview \
-    --num_preview 10
-```
-
-**Выведет:**
-```
-============================================================
-Sample Descriptions (10 shown):
-============================================================
-
-Build: Medieval Castle (abc123xyz)
-Description: A grand medieval fortress constructed with cobblestone 
-and stone bricks, measuring 48x64x48 blocks. The castle features 
-12 furnished rooms across multiple floors, including throne rooms, 
-armories, and living quarters...
-------------------------------------------------------------
-
-Build: Cozy Cottage (def456uvw)
-Description: ...
-```
-
-## ⚡ Оптимизация и Rate Limits
-
-### Gemini API Limits
-- **Free tier:** 60 requests/minute
-- **Рекомендуемый delay:** 1.0 секунда между запросами
-- **Для большого датасета:** используй `--delay 1.5`
-
-### Кэширование
-- Описания сохраняются в `.txt` файлах
-- **Если файл существует → пропускается**
-- Можно прервать и продолжить без потерь
-
-### Параллелизация
-```bash
-# НЕ рекомендуется - можно превысить rate limit
-# Лучше один процесс с delay
-```
-
-## 🎓 Использование описаний
-
-После генерации описаний:
-
-### Вариант 1: Просмотр и анализ
-```python
-from pathlib import Path
-
-descriptions = Path('./data/cache/descriptions')
-for desc_file in descriptions.glob('*.txt'):
-    with open(desc_file) as f:
-        print(f.read())
-```
-
-### Вариант 2: Text-to-Build обучение (будущее)
-```python
-# Датасет готов для обучения text-conditioned модели
-dataset = BuildPasteDataset(
-    cache_dir='./data/cache',
-    generate_descriptions=False  # описания уже есть!
-)
-
-for sample in dataset:
-    blocks = sample['blocks']         # 3D постройка
-    description = sample['description']  # AI описание
-    # Обучай text-to-build модель
-```
-
-### Вариант 3: Экспорт датасета
-```python
-# Можно экспортировать в JSON для других целей
-import json
-from pathlib import Path
-
-dataset = []
-builds_cache = Path('./data/cache/builds')
-desc_cache = Path('./data/cache/descriptions')
-
-for build_file in builds_cache.glob('*.npz'):
-    build_id = build_file.stem
-    desc_file = desc_cache / f'{build_id}.txt'
-    
-    if desc_file.exists():
-        with open(desc_file) as f:
-            description = f.read()
-        
-        dataset.append({
-            'build_id': build_id,
-            'build_path': str(build_file),
-            'description': description
-        })
-
-with open('text_build_dataset.json', 'w') as f:
-    json.dump(dataset, f, indent=2, ensure_ascii=False)
-```
-
-## 💡 Best Practices
-
-### Для обучения:
-1. **Используй detailed style** - больше информации для модели
-2. **Язык:** английский (больше данных в Gemini)
-3. **Генерируй при первом обучении** - экономит время потом
-4. **Сохраняй checkpoints часто** - если процесс прервётся
-
-### Для эксперимента:
-1. **Начни с --limit 10** - проверь качество
-2. **Используй --preview** - посмотри результаты
-3. **Попробуй разные стили** - выбери лучший
-
-### Для production:
-1. **Detailed + English** - универсально
-2. **delay 1.0-1.5** - соблюдай rate limits
-3. **Логируй процесс** - знай где остановился
-4. **Backup описаний** - скопируй descriptions/ куда-то
+### Если обучение прервалось:
+- Описания **сохранены** в кэше
+- Постройки **сохранены** в кэше
+- Просто запусти обучение снова
+- Новые Gemini запросы **не нужны**
 
 ## 🛠️ Troubleshooting
 
-### Ошибка: "gemini_api_key required"
+### "gemini_api_key required"
 ```bash
-# Забыл передать API ключ
---gemini_api_key YOUR_KEY
-```
-
-### Слишком медленно
-```bash
-# Уменьши delay (но не ниже 0.5!)
---delay 0.5
-
-# Или генерируй описания отдельно после обучения
+# Забыл флаг --gemini_api_key
+# Добавь:
+--generate_descriptions \
+--gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw
 ```
 
 ### Rate limit exceeded
 ```bash
-# Увеличь delay
---delay 2.0
-
-# Или используй --limit для batch обработки
---limit 50  # по 50 построек
+# Gemini API лимит: 60 req/min
+# Система автоматически делает delay
+# Просто жди, всё продолжится автоматически
 ```
 
-### Некачественные описания
+### Хочу перегенерировать описания
 ```bash
-# Попробуй другой стиль
---style creative  # вместо detailed
-
-# Или другой язык
---language en  # вместо ru
-```
-
-### Хочу перегенерировать
-```bash
-# Удали существующие описания
+# Удали существующие
 rm -rf ./data/cache/descriptions/
 
-# Запусти заново
-python generate_dataset_descriptions.py ...
+# Запусти обучение снова с --generate_descriptions
 ```
 
-## 📈 Статистика
-
-После генерации скрипт покажет:
-
-```
-============================================================
-Summary:
-  Generated: 245
-  Skipped (already cached): 55
-  Errors: 3
-  Total descriptions: 300
-============================================================
-
-✓ Descriptions saved to: ./data/cache/descriptions
-✓ Ready for text-to-build training!
+### Проверить сколько описаний сгенерировано
+```bash
+ls -1 ./data/cache/descriptions/ | wc -l
 ```
 
-## 🔮 Будущее использование
+### Посмотреть примеры описаний
+```bash
+head -3 ./data/cache/descriptions/*.txt
+```
 
-С готовым датасетом (постройки + описания) можно:
+## 🎯 Использование описаний
 
-### 1. Text-to-Build модель
+После обучения датасет содержит описания:
+
 ```python
-# Генерация построек по описанию
-prompt = "medieval castle with towers"
+from mcbuilder import BuildPasteDataset
+
+# Датасет автоматически загружает описания
+dataset = BuildPasteDataset(
+    cache_dir='./data/cache',
+    generate_descriptions=False  # описания уже в кэше
+)
+
+for sample in dataset:
+    blocks = sample['blocks']           # 3D постройка [32,32,32]
+    description = sample['description']  # "Средневековый замок..."
+    build_name = sample['build_name']   # "Medieval Castle"
+    
+    # Готово для text-to-build обучения!
+```
+
+## 🔮 Будущее: Text-to-Build модель
+
+С готовым датасетом (постройки + описания) можно обучить:
+
+```python
+# Генерация построек по описанию (будущая фича)
+prompt = "средневековый замок с башнями"
 build = model.generate_from_text(prompt)
 ```
 
-### 2. Build-to-Text модель
-```python
-# Описание существующих построек
-description = model.describe_build(blocks)
-```
+---
 
-### 3. Поиск по описаниям
-```python
-# Найти постройки по запросу
-query = "castle with furniture"
-results = search_builds(query, descriptions_dataset)
-```
+## 📝 Краткое резюме
 
-### 4. Style transfer
-```python
-# "Сделай этот дом в стиле замка"
-new_build = transfer_style(source_build, target_description)
-```
-
-## 📝 Пример workflow
+### Что делать:
 
 ```bash
-# Полный цикл с описаниями:
-
-# 1. Обучение VQ-VAE с генерацией описаний
+# Просто добавь эти флаги при обучении:
 python mcbuilder/train_improved_vqvae.py \
     --epochs 100 \
     --generate_descriptions \
     --gemini_api_key AIzaSyCDosYILwiaFepVMThinSM7IjJzrNFbYEw \
     --description_language ru
-
-# 2. Обучение Diffusion (описания уже в кэше)
-python mcbuilder/train_diffusion.py \
-    --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
-    --epochs 100
-
-# 3. Просмотр описаний
-python generate_dataset_descriptions.py --preview
-
-# 4. Генерация построек
-python generate_hq.py --size 64,64,64 --validate
-
-# 5. (Будущее) Обучение text-to-build модели
-# python train_text_to_build.py --use_descriptions
 ```
+
+### Что получишь:
+
+- ✅ Обученный VQ-VAE
+- ✅ Кэш построек из BuildPaste
+- ✅ AI-описания для каждой постройки
+- ✅ Готовый датасет для text-to-build
+
+### Время:
+
+- **Первый раз:** ~9-14 часов (с описаниями)
+- **Повторно:** ~8-12 часов (описания из кэша)
 
 ---
 
-**Теперь датасет содержит не только постройки, но и их AI-описания! 🤖📝**
-
-*Готово для обучения text-to-build моделей!*
+**Теперь датасет автоматически пополняется описаниями во время обучения! 🤖📝**
