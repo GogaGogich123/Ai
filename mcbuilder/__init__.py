@@ -6,6 +6,8 @@ from .improved_vqvae import ImprovedVQVAE3D
 from .diffusion import LatentDiffusion3D
 from .validators import BuildQualityValidator, fix_floating_blocks
 from .chunked_generation import MultiScaleChunkedGenerator, ChunkConfig
+from .build_analyzer import BuildAnalyzer
+from .gemini_describer import GeminiDescriber
 
 __all__ = [
     'BLOCKS_ARRAY',
@@ -24,4 +26,6 @@ __all__ = [
     'fix_floating_blocks',
     'MultiScaleChunkedGenerator',
     'ChunkConfig',
+    'BuildAnalyzer',
+    'GeminiDescriber',
 ]

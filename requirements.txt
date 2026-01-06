@@ -6,3 +6,4 @@ wandb>=0.15.0
 einops>=0.7.0
 transformers>=4.30.0
 pillow>=10.0.0
+google-generativeai>=0.3.0

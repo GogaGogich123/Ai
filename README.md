@@ -29,10 +29,12 @@ pip install -r requirements.txt
 - 🤖 **Latent Diffusion** - SOTA architecture for 3D generation
 - 🔍 **Smart Validation** - Physics & interior quality checks
 - 🛠️ **Auto-Fix** - Removes floating blocks automatically
+- 📝 **AI Descriptions** - Automatic build descriptions with Gemini API ⭐ NEW!
 - 📦 **Litematica Export** - Ready for Minecraft import
 
-## 🌟 What's New: Multi-Scale Generation
+## 🌟 What's New
 
+### Multi-Scale Generation
 Generate builds of ANY size! The system automatically switches to chunked generation for large structures:
 
 - **Small builds (≤32³)**: Fast single-chunk generation
@@ -40,6 +42,14 @@ Generate builds of ANY size! The system automatically switches to chunked genera
 - **Large builds (>128³)**: Hierarchical multi-scale generation
 - **Seamless blending**: No visible seams between chunks
 - **Context-aware**: Each chunk considers neighboring chunks
+
+### AI-Generated Descriptions with Gemini ⭐ NEW!
+Automatically generate professional descriptions for your builds:
+
+- **Smart Analysis**: Analyzes structure, materials, rooms
+- **Multiple Styles**: Detailed, concise, or creative descriptions
+- **Multilingual**: English and Russian support
+- **See [GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md) for details**
 
 ### Example: Generate a 64x64x64 Castle
 ```bash
@@ -120,6 +130,23 @@ python generate_hq.py \
     --output megastructure.litematic
 ```
 
+### With AI Description (Gemini) ⭐ NEW!
+```bash
+python generate_hq.py \
+    --vqvae_checkpoint ./checkpoints_improved/improved_vqvae_final.pt \
+    --diffusion_checkpoint ./checkpoints_diffusion/diffusion_final.pt \
+    --size 64,64,64 \
+    --validate \
+    --gemini_api_key YOUR_API_KEY \
+    --description_style detailed \
+    --description_language en \
+    --output castle_with_desc.litematic
+```
+
+**Result**: Build with professional AI-generated description analyzing structure, materials, and features!
+
+See **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** for complete guide.
+
 ## 🏗️ Architecture
 
 ### Improved VQ-VAE
@@ -150,16 +177,19 @@ python generate_hq.py \
   - `buildpaste_api.py` - Dynamic dataset loader
   - `improved_vqvae.py` - High-quality compression model
   - `diffusion.py` - Latent diffusion generation
-  - `chunked_generation.py` - **NEW!** Multi-scale generation
+  - `chunked_generation.py` - Multi-scale generation
   - `validators.py` - Quality validation system
+  - `build_analyzer.py` - **NEW!** Build structure analyzer
+  - `gemini_describer.py` - **NEW!** AI description generator
   - `litematic_export.py` - .litematic file exporter
 
 - **Training Scripts**
   - `train_improved_vqvae.py` - Train compression model
   - `train_diffusion.py` - Train diffusion model
 
-- **Generation Script**
+- **Generation Scripts**
   - `generate_hq.py` - High-quality generation with chunked support
+  - `generate_with_description.py` - **NEW!** Interactive generator with AI descriptions
 
 ## 📦 Requirements
 
@@ -206,7 +236,8 @@ python generate_hq.py \
 ## 🔮 Future Plans
 
 - [x] Multi-scale chunked generation for large builds
-- [ ] Text conditioning with CLIP encoder
+- [x] AI-generated descriptions with Gemini
+- [ ] Text-to-build generation with CLIP encoder
 - [ ] In-game streaming integration (Forge mod)
 - [ ] Style transfer (one build → another style)
 - [ ] Reference image conditioning
@@ -216,6 +247,14 @@ python generate_hq.py \
 
 Uses BuildPaste API for training data (non-commercial educational use). Structures are dynamically downloaded and cached during training.
 
+## 📚 Documentation
+
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick reference guide for training and generation
+- **[HQ_PIPELINE.md](HQ_PIPELINE.md)** - Technical details of the high-quality pipeline
+- **[QUALITY_IMPROVEMENTS.md](QUALITY_IMPROVEMENTS.md)** - Architecture deep dive and improvements
+- **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** - ⭐ AI description generation guide
+- **[colab_train.ipynb](colab_train.ipynb)** - Interactive training notebook
+
 ## ⚖️ License
 
 Research/educational project. BuildPaste data used under non-commercial terms.
@@ -224,10 +263,11 @@ Research/educational project. BuildPaste data used under non-commercial terms.
 
 - BuildPaste for structure database
 - Litematica mod for schematic format
+- Google Gemini for AI descriptions
 - Minecraft community for inspiration
 
 ---
 
 **Built with AI for AI builders! 🤖🏰**
 
-*Now supporting unlimited build sizes with multi-scale chunked generation!*
+*Now supporting unlimited build sizes and AI-generated descriptions!*
