@@ -80,7 +80,7 @@ def train_epoch(model, dataloader, optimizer, device, epoch, use_perceptual=True
                 'train/loss': loss.item(),
                 'train/recon_loss': recon_loss.item(),
                 'train/vq_loss': vq_loss.item(),
-                'train/step': epoch * len(dataloader) + batch_idx
+                'train/step': epoch * 10000 + batch_idx
             }
             if use_perceptual:
                 wandb_log['train/perceptual_loss'] = perc_loss.item()

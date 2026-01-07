@@ -76,7 +76,7 @@ def train_epoch(model, dataloader, optimizer, device, epoch):
         if batch_idx % 100 == 0:
             wandb.log({
                 'train/loss': loss.item(),
-                'train/step': epoch * len(dataloader) + batch_idx
+                'train/step': epoch * 10000 + batch_idx
             })
     
     return total_loss / num_batches
