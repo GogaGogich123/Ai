@@ -1,0 +1,15 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	url = https://github.com/GogaGogich123/Ai.git
+	tagOpt = --no-tags
+	fetch = +refs/heads/capy/cap-1-bc3cdacc:refs/remotes/origin/capy/cap-1-bc3cdacc
+[branch "capy/cap-1-bc3cdacc"]
+	remote = origin
+	merge = refs/heads/capy/cap-1-bc3cdacc
+[user]
+	name = GogaGogich123
+	email = goga78000@gmail.com
