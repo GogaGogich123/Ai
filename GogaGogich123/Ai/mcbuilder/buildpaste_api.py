@@ -127,6 +127,8 @@ class BuildPasteAPI:
             return []
     
     def download_build(self, build_id: str, version: str = "1.19.2") -> Optional[BuildData]:
+        from .blocks import BLOCK_TO_ID
+        
         url = BUILD_DOWNLOAD_ENDPOINT.format(build_id=build_id)
         params = {
             'version': version,
@@ -138,6 +140,42 @@ class BuildPasteAPI:
             response.raise_for_status()
             
             data = response.json()
+            raw_blocks = data.get('blocks', [])
+            
+            if not raw_blocks:
+                return None
+            
+            converted_blocks = []
+            unknown_count = 0
+            
+            for block in raw_blocks:
+                if isinstance(block, str):
+                    clean_block = block.replace('minecraft:', '')
+                    block_id = BLOCK_TO_ID.get(clean_block, None)
+                    
+                    if block_id is None:
+                        unknown_count += 1
+                        converted_blocks.append(0)
+                    else:
+                        converted_blocks.append(block_id)
+                elif isinstance(block, (int, float)):
+                    block_id = int(block)
+                    if block_id < 0 or block_id >= len(BLOCK_TO_ID):
+                        unknown_count += 1
+                        converted_blocks.append(0)
+                    else:
+                        converted_blocks.append(block_id)
+                else:
+                    unknown_count += 1
+                    converted_blocks.append(0)
+            
+            total_blocks = len(converted_blocks)
+            if total_blocks == 0:
+                return None
+            
+            unknown_ratio = unknown_count / total_blocks
+            if unknown_ratio > 0.5:
+                return None
             
             return BuildData(
                 metadata=BuildMetadata(
@@ -145,11 +183,11 @@ class BuildPasteAPI:
                     name="",
                     description="",
                     category="",
-                    block_count=len(data.get('blocks', [])),
+                    block_count=len(converted_blocks),
                     premium=False
                 ),
                 size=data.get('size', [0, 0, 0]),
-                blocks=data.get('blocks', []),
+                blocks=converted_blocks,
                 data=data.get('data', []),
                 direction=data.get('direction', 'up'),
                 nbt=data.get('nbt', {})
