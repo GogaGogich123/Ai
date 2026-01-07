@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import time
 
 class GeminiDescriber:
-    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash-exp"):
+    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash"):
         genai.configure(api_key=api_key)
         
         self.model = genai.GenerativeModel(model_name)
@@ -85,8 +85,9 @@ Write in an engaging style, like a catalog description. Length: 3-5 sentences.""
             return """You are a creative writer. Create an inspiring and atmospheric description of this Minecraft build, as if it's a location from a fantasy story. Make it memorable and beautiful."""
     
     def _fallback_description(self, analysis: Dict, language: str) -> str:
-        h, w, d = analysis['size']
-        blocks = analysis['total_blocks']
+        size = analysis.get('size') or analysis.get('dimensions', (32, 32, 32))
+        h, w, d = size
+        blocks = analysis.get('total_blocks', 0)
         material = analysis.get('primary_material', 'various materials')
         
         if language == "ru":
