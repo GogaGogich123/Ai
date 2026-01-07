@@ -107,9 +107,10 @@ class ImprovedDecoder3D(nn.Module):
         self.decoder = nn.Sequential(*modules)
         
         self.conv_out = nn.Sequential(
-            ResidualBlock3D(hidden_dims[-1]),
+            nn.ConvTranspose3d(hidden_dims[-1], hidden_dims[-1], kernel_size=4, stride=2, padding=1),
             nn.GroupNorm(8, hidden_dims[-1]),
             nn.SiLU(),
+            ResidualBlock3D(hidden_dims[-1]),
             nn.Conv3d(hidden_dims[-1], out_channels, kernel_size=3, padding=1)
         )
     
