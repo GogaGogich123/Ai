@@ -157,6 +157,9 @@ class ImprovedVQVAE3D(nn.Module):
         )
     
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if torch.any(x >= self.num_blocks) or torch.any(x < 0):
+            raise ValueError(f"Block indices out of range [0, {self.num_blocks-1}]: min={x.min().item()}, max={x.max().item()}")
+        
         x_embedded = self.block_embedding(x).permute(0, 4, 1, 2, 3)
         
         z = self.encoder(x_embedded)
