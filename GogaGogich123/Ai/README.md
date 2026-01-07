@@ -7,7 +7,7 @@ Generate professional-quality Minecraft builds from **TEXT PROMPTS** or random g
 python generate_from_text.py --prompt "medieval castle with stone towers" --output castle.litematic
 ```
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/GogaGogich123/Ai/blob/capy/cap-1-bc3cdacc/colab_train.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/GogaGogich123/Ai/blob/capy/cap-1-8a0a17d6/colab_train.ipynb)
 
 ## 🚀 Quick Start
 
@@ -20,7 +20,7 @@ Click the badge above or open [`colab_train.ipynb`](colab_train.ipynb) in Colab 
 ```bash
 git clone https://github.com/GogaGogich123/Ai.git
 cd Ai
-git checkout capy/cap-1-bc3cdacc
+git checkout capy/cap-1-8a0a17d6
 pip install -e .
 pip install -r requirements.txt
 
