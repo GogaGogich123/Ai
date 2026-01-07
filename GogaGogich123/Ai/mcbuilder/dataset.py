@@ -162,8 +162,12 @@ class BuildPasteDataset(IterableDataset):
         if build_data is None:
             return None
         
-        size = build_data.size
-        blocks = np.array(build_data.blocks, dtype=np.int16).reshape(size)
+        try:
+            size = build_data.size
+            blocks = np.array(build_data.blocks, dtype=np.int16).reshape(size)
+        except (ValueError, TypeError) as e:
+            print(f"  ⚠ Skipping build with modded blocks: {e}")
+            return None
         
         description = None
         if self.generate_descriptions and not self._is_description_cached(metadata.build_id):
