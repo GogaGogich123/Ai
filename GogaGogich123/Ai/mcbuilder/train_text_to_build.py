@@ -122,7 +122,7 @@ def train_text_to_build(args):
         chunk_size=args.chunk_size,
         download=True,
         generate_descriptions=args.generate_descriptions,
-        gemini_api_key=args.gemini_api_key if args.generate_descriptions else None,
+        mistral_api_key=args.mistral_api_key if args.generate_descriptions else None,
         description_language=args.description_language
     )
     
@@ -308,8 +308,8 @@ def main():
     
     parser.add_argument('--generate_descriptions', action='store_true',
                       help='Generate AI descriptions during training')
-    parser.add_argument('--gemini_api_key', type=str,
-                      help='Gemini API key for description generation')
+    parser.add_argument('--mistral_api_key', type=str,
+                      help='Mistral API key for description generation')
     parser.add_argument('--description_language', type=str, default='en',
                       help='Language for descriptions (en/ru)')
     

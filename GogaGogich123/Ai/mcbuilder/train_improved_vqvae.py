@@ -122,7 +122,7 @@ def main(args):
         categories=args.categories.split(',') if args.categories else None,
         download=True,
         generate_descriptions=args.generate_descriptions,
-        gemini_api_key=args.gemini_api_key if args.generate_descriptions else None,
+        mistral_api_key=args.mistral_api_key if args.generate_descriptions else None,
         description_language=args.description_language
     )
     
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_every', type=int, default=10)
     
     parser.add_argument('--generate_descriptions', action='store_true', help='Generate AI descriptions for dataset builds')
-    parser.add_argument('--gemini_api_key', type=str, default=None, help='Gemini API key for description generation')
+    parser.add_argument('--mistral_api_key', type=str, default=None, help='Mistral API key for description generation')
     parser.add_argument('--description_language', type=str, default='en', choices=['en', 'ru'], help='Language for descriptions')
     
     args = parser.parse_args()

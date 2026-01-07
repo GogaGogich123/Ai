@@ -11,7 +11,7 @@ import random
 from .buildpaste_api import BuildPasteAPI, BuildData, BuildMetadata
 from .blocks import BLOCKS_ARRAY, is_blacklisted
 from .build_analyzer import BuildAnalyzer
-from .gemini_describer import GeminiDescriber
+from .mistral_describer import MistralDescriber
 
 class BuildPasteDataset(IterableDataset):
     def __init__(
@@ -25,7 +25,7 @@ class BuildPasteDataset(IterableDataset):
         transform=None,
         download: bool = True,
         generate_descriptions: bool = False,
-        gemini_api_key: Optional[str] = None,
+        mistral_api_key: Optional[str] = None,
         description_language: str = "en"
     ):
         super().__init__()
@@ -46,11 +46,11 @@ class BuildPasteDataset(IterableDataset):
         self.api = BuildPasteAPI()
         
         if generate_descriptions:
-            if not gemini_api_key:
-                raise ValueError("gemini_api_key required when generate_descriptions=True")
+            if not mistral_api_key:
+                raise ValueError("mistral_api_key required when generate_descriptions=True")
             self.analyzer = BuildAnalyzer()
-            self.describer = GeminiDescriber(gemini_api_key)
-            print(f"✓ Gemini descriptions enabled (language: {description_language})")
+            self.describer = MistralDescriber(mistral_api_key)
+            print(f"✓ Mistral descriptions enabled (language: {description_language})")
         else:
             self.analyzer = None
             self.describer = None

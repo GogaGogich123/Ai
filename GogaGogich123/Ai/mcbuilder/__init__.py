@@ -9,7 +9,7 @@ from .text_encoder import CLIPTextEncoder, SimpleTextEncoder, TextTokenizer
 from .validators import BuildQualityValidator, fix_floating_blocks
 from .chunked_generation import MultiScaleChunkedGenerator, ChunkConfig
 from .build_analyzer import BuildAnalyzer
-from .gemini_describer import GeminiDescriber
+from .mistral_describer import MistralDescriber
 
 __all__ = [
     'BLOCKS_ARRAY',
@@ -34,5 +34,5 @@ __all__ = [
     'MultiScaleChunkedGenerator',
     'ChunkConfig',
     'BuildAnalyzer',
-    'GeminiDescriber',
+    'MistralDescriber',
 ]

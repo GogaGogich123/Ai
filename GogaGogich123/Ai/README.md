@@ -77,7 +77,7 @@ Generate builds of ANY size! The system automatically switches to chunked genera
 - **Seamless blending**: No visible seams between chunks
 - **Context-aware**: Each chunk considers neighboring chunks
 
-### AI-Generated Dataset Descriptions with Gemini ⭐ NEW!
+### AI-Generated Dataset Descriptions with Mistral ⭐ NEW!
 Automatically generate professional descriptions for BuildPaste dataset builds:
 
 - **During Training**: Generate descriptions while downloading builds
@@ -114,7 +114,7 @@ python mcbuilder/train_improved_vqvae.py \
     --checkpoint_dir ./checkpoints_improved \
     --epochs 100 \
     --generate_descriptions \
-    --gemini_api_key YOUR_API_KEY \
+    --mistral_api_key YOUR_API_KEY \
     --description_language ru
 ```
 
@@ -135,7 +135,7 @@ BuildPaste Dataset → Improved VQ-VAE (128d, 1024 codebook)
 ### Text-to-Build Generation (35-48 hours total):
 
 ```
-BuildPaste Dataset → Improved VQ-VAE + AI Descriptions (Gemini)
+BuildPaste Dataset → Improved VQ-VAE + AI Descriptions (Mistral)
                   → Text-Conditioned Diffusion (UNet3D + Cross-Attention)
                   → Text Encoder (CLIP or Transformer)
                   → Prompt → Generation
@@ -224,7 +224,7 @@ python generate_hq.py \
   - `chunked_generation.py` - Multi-scale generation
   - `validators.py` - Quality validation system
   - `build_analyzer.py` - **NEW!** Build structure analyzer
-  - `gemini_describer.py` - **NEW!** AI description generator
+  - `mistral_describer.py` - **NEW!** AI description generator
   - `litematic_export.py` - .litematic file exporter
 
 - **Training Scripts**
@@ -253,7 +253,7 @@ python generate_hq.py \
 6. **Export**: Save as .litematic for Minecraft
 
 ### Text-to-Build Generation:
-1. **VQ-VAE Stage**: Compress 3D voxels, generate AI descriptions via Gemini
+1. **VQ-VAE Stage**: Compress 3D voxels, generate AI descriptions via Mistral
 2. **Text Encoder**: Encode prompts into embeddings (CLIP or Transformer)
 3. **Text-Conditioned Diffusion**: UNet3D with cross-attention to text
 4. **Generation**: Input prompt → text embeddings → latent → blocks
@@ -295,7 +295,7 @@ python mcbuilder/train_improved_vqvae.py \
     --checkpoint_dir ./checkpoints_improved \
     --epochs 100 \
     --generate_descriptions \
-    --gemini_api_key YOUR_KEY
+    --mistral_api_key YOUR_KEY
 
 # Stage 2: Text-Conditioned Diffusion (~15-20 hours)
 python mcbuilder/train_text_to_build.py \
@@ -315,7 +315,7 @@ python generate_from_text.py \
 ## 🔮 Future Plans
 
 - [x] Multi-scale chunked generation for large builds
-- [x] AI-generated descriptions with Gemini
+- [x] AI-generated descriptions with Mistral
 - [x] ✨ Text-to-build generation with CLIP encoder
 - [ ] Multi-scale text-to-build (unlimited prompt-based sizes)
 - [ ] Negative prompts ("castle without towers")
@@ -335,7 +335,7 @@ Uses BuildPaste API for training data (non-commercial educational use). Structur
 - **[HQ_PIPELINE.md](HQ_PIPELINE.md)** - Technical details of the high-quality pipeline
 - **[QUALITY_IMPROVEMENTS.md](QUALITY_IMPROVEMENTS.md)** - Architecture deep dive and improvements
 - **[DATASET_DESCRIPTIONS.md](DATASET_DESCRIPTIONS.md)** - Dataset AI description generation
-- **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** - Gemini API integration guide
+- **[GEMINI_DESCRIPTIONS.md](GEMINI_DESCRIPTIONS.md)** - Mistral API integration guide
 - **[colab_train.ipynb](colab_train.ipynb)** - Interactive training notebook
 
 ## ⚖️ License
@@ -346,7 +346,7 @@ Research/educational project. BuildPaste data used under non-commercial terms.
 
 - BuildPaste for structure database
 - Litematica mod for schematic format
-- Google Gemini for AI descriptions
+- Google Mistral for AI descriptions
 - Minecraft community for inspiration
 
 ---

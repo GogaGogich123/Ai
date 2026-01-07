@@ -37,7 +37,7 @@ Noisy Latent → UNet3D (with Cross-Attention) → Denoised Latent
 ### Prerequisites
 
 1. **Trained VQ-VAE** (from Stage 1)
-2. **Dataset with descriptions** (generated via Gemini)
+2. **Dataset with descriptions** (generated via Mistral)
 
 ### Stage 1: VQ-VAE with Descriptions (8-12 hours)
 
@@ -46,7 +46,7 @@ python mcbuilder/train_improved_vqvae.py \
     --checkpoint_dir ./checkpoints_improved \
     --epochs 100 \
     --generate_descriptions \
-    --gemini_api_key YOUR_GEMINI_KEY \
+    --mistral_api_key YOUR_GEMINI_KEY \
     --description_language en
 ```
 
@@ -361,7 +361,7 @@ done
 python mcbuilder/train_improved_vqvae.py \
     --epochs 100 \
     --generate_descriptions \
-    --gemini_api_key YOUR_KEY
+    --mistral_api_key YOUR_KEY
 
 # Stage 2: Text-to-Build (15-20h)
 python mcbuilder/train_text_to_build.py \

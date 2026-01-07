@@ -1,18 +1,16 @@
-import google.generativeai as genai
+from mistralai import Mistral
 from typing import Dict, Optional
 import time
 
-class GeminiDescriber:
-    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash"):
-        genai.configure(api_key=api_key)
-        
-        self.model = genai.GenerativeModel(model_name)
+class MistralDescriber:
+    def __init__(self, api_key: str, model_name: str = "mistral-small-latest"):
+        self.client = Mistral(api_key=api_key)
+        self.model_name = model_name
         
         self.generation_config = {
             "temperature": 0.7,
             "top_p": 0.95,
-            "top_k": 40,
-            "max_output_tokens": 500,
+            "max_tokens": 500,
         }
     
     def generate_description(
@@ -34,18 +32,26 @@ class GeminiDescriber:
             
             full_prompt = f"{system_prompt}\n\n{analysis_prompt}"
             
-            response = self.model.generate_content(
-                full_prompt,
-                generation_config=self.generation_config
+            response = self.client.chat.complete(
+                model=self.model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": full_prompt
+                    }
+                ],
+                temperature=self.generation_config["temperature"],
+                top_p=self.generation_config["top_p"],
+                max_tokens=self.generation_config["max_tokens"]
             )
             
-            if response.text:
-                return response.text.strip()
+            if response.choices and response.choices[0].message.content:
+                return response.choices[0].message.content.strip()
             else:
                 return self._fallback_description(analysis, language)
         
         except Exception as e:
-            print(f"Error generating description with Gemini: {e}")
+            print(f"Error generating description with Mistral: {e}")
             return self._fallback_description(analysis, language)
     
     def _get_detailed_prompt(self, language: str) -> str:
@@ -150,13 +156,21 @@ Technical specs:
 
 Create an enhanced version that preserves the author's style while adding important details."""
             
-            response = self.model.generate_content(
-                prompt,
-                generation_config=self.generation_config
+            response = self.client.chat.complete(
+                model=self.model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=self.generation_config["temperature"],
+                top_p=self.generation_config["top_p"],
+                max_tokens=self.generation_config["max_tokens"]
             )
             
-            if response.text:
-                return response.text.strip()
+            if response.choices and response.choices[0].message.content:
+                return response.choices[0].message.content.strip()
             else:
                 return user_description
         
